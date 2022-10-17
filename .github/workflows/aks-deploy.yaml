@@ -1,5 +1,6 @@
 # This workflow will deploy two clusters, one in each region, without the workload. 
 # Huaiyong modified this
+# 20221017 16:43
 # Follow the next steps to use this workflow:
 #
 # 1. Ensure you have followed the prior sections before deploying this AKS cluster. This way, you will be capable of setting:
