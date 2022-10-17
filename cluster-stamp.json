@@ -27,7 +27,7 @@
         "clusterInternalLoadBalancerIpAddress": {
             "type": "string",
             "metadata": {
-                "description": "The AKS cluster Internal Load Balancer IP Address"
+                "description": "The AKS cluster Internal Load Balancer Ip Address"
             }
         },
         "targetVnetResourceId": {
@@ -58,7 +58,7 @@
         "aksIngressControllerCertificate": {
             "type": "string",
             "metadata": {
-                "description": "The Base64 encoded AKS Ingress Controller public certificate (as .crt or .cer) to be stored in Azure Key Vault as secret and referenced by Azure Application Gateway as a trusted root certificate."
+                "description": "The base 64 encoded AKS Ingress Controller public certificate (as .crt or .cer) to be stored in Azure Key Vault as secret and referenced by Azure Application Gateway as a trusted root certificate."
             }
         },
         "clusterAuthorizedIPRanges": {
@@ -89,33 +89,12 @@
                 "southeastasia"
             ],
             "metadata": {
-                "description": "AKS Service, Node Pool, and supporting services (Key Vault, App Gateway, etc) region. This needs to be the same region as the vnet provided in these parameters."
+                "description": "AKS Service, Node Pool, and supporting services (KeyVault, App Gateway, etc) region. This needs to be the same region as the vnet provided in these parameters."
             }
         },
         "kubernetesVersion": {
-            "defaultValue": "1.24.6",
+            "defaultValue": "1.24.0",
             "type": "string"
-        },
-        "gitOpsBootstrappingRepoHttpsUrl": {
-            "defaultValue": "https://github.com/mspnp/aks-baseline-multiregion",
-            "type": "string",
-            "metadata": {
-                "description": "Your cluster will be bootstrapped from this git repo."
-            }
-        },
-        "gitOpsBootstrappingRepoBranch": {
-            "defaultValue": "main",
-            "type": "string",
-            "metadata": {
-                "description": "Your cluster will be bootstrapped from this branch in the identified git repo."
-            }
-        },
-        "gitOpsBootstrappingRepoDirectoryName": {
-            "defaultValue": "region1",
-            "type": "string",
-            "metadata": {
-                "description": "Your cluster will be bootstrapped from this directory under cluster-manifests."
-            }
         }
     },
     "variables": {
@@ -125,6 +104,7 @@
         "networkContributorRole": "[concat(subscription().Id, '/providers/Microsoft.Authorization/roleDefinitions/4d97b98b-1d4f-4787-a291-c67834d212e7')]",
         "monitoringMetricsPublisherRole": "[concat(subscription().Id, '/providers/Microsoft.Authorization/roleDefinitions/3913510d-42f4-4e42-8a64-420c390055eb')]",
         "acrPullRole": "[concat(subscription().Id, '/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+        "managedIdentityOperatorRole": "[concat(subscription().Id, '/providers/Microsoft.Authorization/roleDefinitions/f1a07417-d97a-45cb-824c-7a7467783830')]",
         "virtualMachineContributorRole": "[concat(subscription().Id, '/providers/Microsoft.Authorization/roleDefinitions/9980e02c-c2be-4d73-94e8-173b1dc7cf3c')]",
         "readerRole": "[concat(subscription().Id, '/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7')]",
 
@@ -184,25 +164,7 @@
             "apiVersion": "2018-11-30",
             "name": "podmi-ingress-controller",
             "location": "[parameters('location')]",
-            "comments": "User Managed Identity for the cluster's ingress controller pods. Used for Azure Key Vault Access.",
-            "resources": [
-                {
-                    "type": "federatedIdentityCredentials",
-                    "apiVersion": "2022-01-31-preview",
-                    "name": "ingress-controller",
-                    "dependsOn": [
-                        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'podmi-ingress-controller')]",
-                        "[resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName'))]"
-                    ],
-                    "properties": {
-                        "issuer": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName'))).oidcIssuerProfile.issuerURL]",
-                        "subject": "system:serviceaccount:a0042:traefik-ingress-controller",
-                        "audiences": [
-                            "api://AzureADTokenExchange"
-                        ]
-                    }
-                }
-            ]
+            "comments": "User Managed Identity for the cluster's ingress controller pods. Used for Azure Key Vault Access."
         },
         {
             "type": "Microsoft.KeyVault/vaults",
@@ -314,7 +276,7 @@
                         "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
                         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'podmi-ingress-controller')]"
                     ],
-                    "comments": "Grant the AKS cluster ingress controller's managed workload identity with reader role permissions over Key Vault; paired with the Access Policy, this allows our ingress controller to pull certificates.",
+                    "comments": "Grant the AKS cluster ingress controller pod managed identity with reader role permissions over Key Vault; paired with the Access Policy, this allows our ingress controller to pull certificates.",
                     "properties": {
                         "roleDefinitionId": "[variables('readerRole')]",
                         "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'podmi-ingress-controller')).principalId]",
@@ -812,7 +774,7 @@
         },
         {
             "type": "Microsoft.ContainerService/managedClusters",
-            "apiVersion": "2022-03-02-preview",
+            "apiVersion": "2021-02-01",
             "name": "[variables('clusterName')]",
             "location": "[parameters('location')]",
             "tags": {
@@ -908,12 +870,6 @@
                         "config": {
                             "version": "v2"
                         }
-                    },
-                    "azureKeyvaultSecretsProvider": {
-                        "enabled": true,
-                        "config": {
-                            "enableSecretRotation": "false"
-                        }
                     }
                 },
                 "nodeResourceGroup": "[variables('nodeResourceGroupName')]",
@@ -962,21 +918,10 @@
                     "enablePrivateCluster": false
                 },
                 "podIdentityProfile": {
-                    "enabled": false
-                },
-                "disableLocalAccounts:": true,
-                "securityProfile": {
-                    "workloadIdentity": {
-                        "enabled": true
-                    },
-                    "azureDefender": {
-                        "enabled": false
-                    }
-                },
-                "oidcIssuerProfile": {
-                    "enabled": true
-                },
-                "enableNamespaceResources": false
+                    "enabled": false, /* This feature is currently in preview and will eventually replace the aad-pod-identity configuration set up by hand in this reference implementation */
+                    "userAssignedIdentities": [],
+                    "userAssignedIdentityExceptions": []
+                }
             },
             "identity": {
                 "type": "UserAssigned",
@@ -1033,74 +978,6 @@
                     }
                 }
             ]
-        },
-        {
-            "type": "Microsoft.KubernetesConfiguration/extensions",
-            "apiVersion": "2021-09-01",
-            "scope": "[concat('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]",
-            "name": "flux",
-            "dependsOn": [
-                "[resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName'))]",
-                "[resourceId(split(parameters('containerRegistryId'),'/')[4], 'Microsoft.Resources/deployments', 'EnsureClusterIdentityHasRbacToPullAcr')]"
-            ],
-            "properties": {
-                "extensionType": "microsoft.flux",
-                "autoUpgradeMinorVersion": true,
-                "releaseTrain": "Stable",
-                "scope": {
-                    "cluster": {
-                        "releaseNamespace": "flux-system"
-                    }
-                },
-                "configurationSettings": {
-                    "helm-controller.enabled": "false",
-                    "source-controller.enabled": "true",
-                    "kustomize-controller.enabled": "true",
-                    "notification-controller.enabled": "false",
-                    "image-automation-controller.enabled": "false",
-                    "image-reflector-controller.enabled": "false"
-                },
-                "configurationProtectedSettings": {}
-            }
-        },
-        {
-            "type": "Microsoft.KubernetesConfiguration/fluxConfigurations",
-            "apiVersion": "2022-03-01",
-            "scope": "[concat('Microsoft.ContainerService/managedClusters/', variables('clusterName'))]",
-            "name": "bootstrap",
-            "dependsOn": [
-                "[resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName'))]",
-                "[resourceId(split(parameters('containerRegistryId'),'/')[4], 'Microsoft.Resources/deployments', 'EnsureClusterIdentityHasRbacToPullAcr')]",
-                "[extensionResourceId(resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'flux')]"
-            ],
-            "properties": {
-                "scope": "cluster",
-                "namespace": "flux-system",
-                "sourceKind": "GitRepository",
-                "gitRepository": {
-                    "url": "[parameters('gitOpsBootstrappingRepoHttpsUrl')]",
-                    "timeoutInSeconds": 180,
-                    "syncIntervalInSeconds": 300,
-                    "repositoryRef": {
-                        "branch": "[parameters('gitOpsBootstrappingRepoBranch')]"
-                    },
-                    "sshKnownHosts": "",
-                    "httpsUser": "[json('null')]",
-                    "httpsCACert": "[json('null')]",
-                    "localAuthRef": "[json('null')]"
-                },
-                "kustomizations": {
-                    "unifed" : {
-                        "path": "[concat('./cluster-manifests/', parameters('gitOpsBootstrappingRepoDirectoryName'))]",
-                        "dependsOn": [],
-                        "timeoutInSeconds": 300,
-                        "syncIntervalInSeconds": 300,
-                        "retryIntervalInSeconds": 300,
-                        "prune": true,
-                        "force": false
-                    }
-                }
-            }
         },
         {
             "type": "Microsoft.Insights/metricAlerts",
@@ -1699,6 +1576,20 @@
             }
         },
         {
+            "type": "Microsoft.ManagedIdentity/userAssignedIdentities/providers/roleAssignments",
+            "name": "[concat('podmi-ingress-controller', '/Microsoft.Authorization/', guid(concat(resourceGroup().id), variables('managedIdentityOperatorRole')))]",
+            "apiVersion": "2018-09-01-preview",
+            "comments": "Grant the AKS cluster with Manage Identity Operator role permissions over the managed identity used for the ingress controller.  Allows it to be assigned to the underlying VMSS.",
+            "dependsOn": [
+                "[resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName'))]"
+            ],
+            "properties": {
+                "roleDefinitionId": "[variables('managedIdentityOperatorRole')]",
+                "principalId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('clusterName')), '2020-11-01').identityProfile.kubeletidentity.objectId]",
+                "principalType": "ServicePrincipal"
+            }
+        },
+        {
             "type": "Microsoft.Authorization/policyAssignments",
             "apiVersion": "2020-03-01",
             "name": "[variables('policyAssignmentNameAKSLinuxRestrictive')]",
@@ -1713,7 +1604,6 @@
                             "kube-system",
                             "gatekeeper-system",
                             "azure-arc",
-                            "flux-system",
                             "cluster-baseline-settings"
                         ]
                     },
@@ -1775,8 +1665,7 @@
                         "value": [
                             "kube-system",
                             "gatekeeper-system",
-                            "azure-arc",
-                            "flux-system"
+                            "azure-arc"
                         ]
                     },
                     "effect": {
@@ -1806,7 +1695,6 @@
                             "kube-system",
                             "gatekeeper-system",
                             "azure-arc",
-                            "flux-system",
                             "cluster-baseline-settings"
                         ]
                     },
@@ -1833,8 +1721,7 @@
                         "value": [
                             "kube-system",
                             "gatekeeper-system",
-                            "azure-arc",
-                            "flux-system"
+                            "azure-arc"
                         ]
                     },
                     "effect": {
@@ -1852,6 +1739,10 @@
         "agwName": {
             "type": "string",
             "value": "[variables('agwName')]"
+        },
+        "aksIngressControllerPodManagedIdentityResourceId": {
+            "type": "string",
+            "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'podmi-ingress-controller')]"
         },
         "aksIngressControllerPodManagedIdentityClientId": {
             "type": "string",

@@ -6,34 +6,25 @@
       "value": "centralus"
     },
     "targetVnetResourceId": {
-      "value": "<cluster-spoke-vnet-resource-id>"
+      "value": "/subscriptions/16522e92-d071-4535-bbd4-d10a1536ae38/resourceGroups/rg-enterprise-networking-spokes/providers/Microsoft.Network/virtualNetworks/vnet-hub-spoke-BU0001A0042-04"
     },
     "appInstanceId": {
       "value": "04"
     },
     "clusterAdminAadGroupObjectId": {
-      "value": "<azure-ad-aks-admin-group-object-id>"
+      "value": "7b4b7227-a943-4148-979b-0de6c727f73e"
     },
     "k8sControlPlaneAuthorizationTenantId": {
-      "value": "<tenant-id-with-user-admin-permissions>"
+      "value": "e192bcd9-8cc8-44ca-a207-09e96f582e6a"
     },
     "clusterInternalLoadBalancerIpAddress": {
       "value": "10.244.4.4"
     },
     "logAnalyticsWorkspaceId": {
-      "value": "<log-analytics-workspace-id>"
+      "value": "/subscriptions/16522e92-d071-4535-bbd4-d10a1536ae38/resourceGroups/rg-bu0001a0042-shared/providers/Microsoft.OperationalInsights/workspaces/la-xc5oxbw43eq7o"
     },
     "containerRegistryId": {
-      "value": "<container-registry-id>"
-    },
-    "gitOpsBootstrappingRepoHttpsUrl": {
-      "value": "https://github.com/<your-github-org>/aks-baseline-multi-region"
-    },
-    "gitOpsBootstrappingRepoBranch": {
-      "value": "main"
-    },
-    "gitOpsBootstrappingRepoDirectoryName": {
-      "value": "region2"
+      "value": "/subscriptions/16522e92-d071-4535-bbd4-d10a1536ae38/resourceGroups/rg-bu0001a0042-shared/providers/Microsoft.ContainerRegistry/registries/acraksxc5oxbw43eq7o"
     }
   }
 }
